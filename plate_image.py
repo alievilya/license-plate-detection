@@ -139,8 +139,9 @@ def delete_borders(crop_img):
 
 
 def parse_result(res):
-    not_allowed_syms = [' ', '!', '$', '%', '^', '&', '*', '(', ')', '+', '=', '_', '-', '[', ']',
-                        'q', 'w', 'r', 'u', 'i', 's', 'd', 'f', 'g', 'j', 'l', 'z', 'v', 'n', '<', '>']
+    not_allowed_syms = (' ', '!', '$', '%', '^', '&', '*', '(', ')', '+', '=', '_', '-', '[', ']',
+                        'q', 'w', 'r', 'u', 'i', 's', 'd', 'f', 'g', 'j', 'l', 'z', 'v', 'n', '<', '>')
+    nums = ('1234567890')
     B_similar = ['8', '3']
     new_el = ""
     for el in res:
@@ -152,6 +153,7 @@ def parse_result(res):
 
             if i == 0 and sym in B_similar:
                 new_el += 'B'
+
     return new_el
 
 
@@ -161,24 +163,26 @@ def preprocess_image(img, width_coef, height_coef, show_steps=False):
     # res = np.hstack((crop_img, equ))  # stacking images side-by-side
 
     # gray = cv2.resize(img, None, fx=width_coef, fy=height_coef, interpolation=cv2.INTER_AREA)
-    disnoised = cv2.fastNlMeansDenoising(img, None, 10, 10, 7)
+    disnoised = cv2.fastNlMeansDenoising(img, None, 5, 5, 7)
 
     blur = cv2.GaussianBlur(disnoised, (5, 5), 0)
     gray = cv2.medianBlur(blur, 3)
-    se = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
-    cropped = crop_plate(thresh)
+    # se = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    # ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
+
     # inversed_im = cv2.bitwise_not(thresh)
 
     if show_steps:
-        cv2.imshow('blur', gray)
-        cv2.imshow('crop', img)
+        cv2.imshow('input', img)
         cv2.imshow('disnoised', disnoised)
-        cv2.imshow("Otsu", thresh)
-        cv2.imshow("Result", cropped)
+        cv2.imshow('blur', gray)
+
+
+        # cv2.imshow("Otsu", thresh)
+        # cv2.imshow("Result", cropped)
         # cv2.imshow("bitwise_not", inversed_im)
         cv2.waitKey(0)
-    return cropped
+    return gray
 
 if "__name__" == "__main__":
 

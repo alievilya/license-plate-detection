@@ -53,18 +53,18 @@ while rr:
 
     for bbox in bboxes.values:
         height_coef = 80 / bbox[7]
-        width_coef = 350 / bbox[6]
+        width_coef = 400 / bbox[6]
 
         crop_img = frame[int(bbox[1] - 10):int(bbox[1]) + int(bbox[7] + 10),
                    int(bbox[0] - 10):int(bbox[0]) + int(bbox[6] + 10)]
 
-        # crop_img = preprocess_image(crop_img, width_coef=width_coef, height_coef=height_coef, show_steps=False)
+        crop_img = preprocess_image(crop_img, width_coef=width_coef, height_coef=height_coef, show_steps=True)
         crop_img = crop_plate(crop_img)
         pred = reader.detect(crop_img)
-        result = reader.recognize(crop_img, pred[0], pred[1], allowlist=allow_symbols, detail=0)
-        print('detection: {}'.format(result))
+        # result = reader.recognize(crop_img, pred[0], pred[1], allowlist=allow_symbols, detail=0)
+        # print('detection: {}'.format(result))
 
-        result = parse_result(reader.readtext(crop_img, allowlist=allow_symbols, detail=0))
+        result = parse_result(reader.readtext(crop_img, allowlist=allow_symbols, detail=0, adjust_contrast = 0.5))
         print('read text: {}'.format(result))
 
     frame_res = draw_detect(frame, bboxes)
