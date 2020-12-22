@@ -4,6 +4,7 @@ import cv2
 import os
 import numpy as np
 from os.path import join
+from operator import itemgetter
 from draw import draw_detect
 import easyocr
 import scipy.fftpack # For FFT2
@@ -138,78 +139,91 @@ def delete_borders(crop_img):
 
 
 def parse_result(res):
-    not_allowed_syms = [' ', '!', '$', '%', '^', '&', '*', '(', ')', '+', '=', '_', '-', '[', ']']
+    not_allowed_syms = [' ', '!', '$', '%', '^', '&', '*', '(', ')', '+', '=', '_', '-', '[', ']',
+                        'q', 'w', 'r', 'u', 'i', 's', 'd', 'f', 'g', 'j', 'l', 'z', 'v', 'n', '<', '>']
+    B_similar = ['8', '3']
     new_el = ""
     for el in res:
-        for sym in el:
+        if len(el) <= 5: continue
+        for i, sym in enumerate(el):
             if sym in not_allowed_syms:
                 new_el += ''
             else: new_el += sym
+
+            if i == 0 and sym in B_similar:
+                new_el += 'B'
     return new_el
 
 
-from models import Yolov4
-
-model = Yolov4(weight_path='custom.weights',
-               class_name_path='class_names/plate.txt')
-
-reader = easyocr.Reader(['en'])
-
-filename = 'data_files/test11.jpg'
-show_steps = False
-bboxes = model.predict(filename)
-image = cv2.imread(filename, 0)
-result = reader.readtext(image, detail=0)
-print('image: {}'.format(result))
-
-for bbox in bboxes.values:
-
-    crop_img = image[int(bbox[1]-5):int(bbox[1]) + int(bbox[7]+10), int(bbox[0]-5):int(bbox[0]) + int(bbox[6]+10)]
-
+def preprocess_image(img, width_coef, height_coef, show_steps=False):
     # gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
     # equ = cv2.equalizeHist(crop_img)
     # res = np.hstack((crop_img, equ))  # stacking images side-by-side
 
-    gray = cv2.resize(crop_img, None, fx=1, fy=1, interpolation=cv2.INTER_AREA)
-    disnoised = cv2.fastNlMeansDenoising(gray, None, 10, 10, 7)
+    # gray = cv2.resize(img, None, fx=width_coef, fy=height_coef, interpolation=cv2.INTER_AREA)
+    disnoised = cv2.fastNlMeansDenoising(img, None, 10, 10, 7)
 
     blur = cv2.GaussianBlur(disnoised, (5, 5), 0)
     gray = cv2.medianBlur(blur, 3)
     se = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
-    cropped_plate = crop_plate(thresh)
-    inversed_im = cv2.bitwise_not(thresh)
+    cropped = crop_plate(thresh)
+    # inversed_im = cv2.bitwise_not(thresh)
 
     if show_steps:
         cv2.imshow('blur', gray)
-        cv2.imshow('crop', crop_img)
+        cv2.imshow('crop', img)
         cv2.imshow('disnoised', disnoised)
         cv2.imshow("Otsu", thresh)
-        cv2.imshow("Result", cropped_plate)
-        cv2.imshow("bitwise_not", inversed_im)
+        cv2.imshow("Result", cropped)
+        # cv2.imshow("bitwise_not", inversed_im)
+        cv2.waitKey(0)
+    return cropped
 
-    # cv2.imshow("border_im", border_im)
+if "__name__" == "__main__":
+
+    from models import Yolov4
+
+    model = Yolov4(weight_path='custom.weights',
+                   class_name_path='class_names/plate.txt')
+
+    reader = easyocr.Reader(['en', 'ru'])
+
+    for filename in os.listdir('data_files/images'):
+
+    # filename = 'data_files/test4.jpg'
+        filepath = os.path.join('data_files/images', filename)
+        image = cv2.imread(filepath, 0)
+        bboxes = model.predict(filepath, plot_img=False)
+        allow_symbols = 'УЕОРАВСМТКETOPAHKXCBM1234567890'
+
+        # pred = reader.detect(image)
+        # res = reader.recognize(image, pred[0], pred[1], allowlist=allow_symbols, detail=1)
+        # # res.sort(key=lambda x: x[0][0][0])
+        # # print(res)
+
+
+        for bbox in bboxes.values:
+            height_coef = 80 / bbox[7]
+            width_coef = 350 / bbox[6]
+
+            crop_img = image[int(bbox[1]-10):int(bbox[1]) + int(bbox[7]+10), int(bbox[0]-10):int(bbox[0]) + int(bbox[6]+10)]
+
+            # crop_img = preprocess_image(crop_img, width_coef=width_coef, height_coef=height_coef, show_steps=False)
+            crop_img = crop_plate(crop_img)
+            pred = reader.detect(crop_img)
+            result = reader.recognize(crop_img, pred[0], pred[1], allowlist=allow_symbols, detail=0)
+            print('detection: {}'.format(result))
+
+            result = parse_result(reader.readtext(crop_img, allowlist=allow_symbols, detail=0))
+            print('read text: {}'.format(result))
+
+
+
+        frame_res = draw_detect(image, bboxes)
+        cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("output", 1000, 600)
+        cv2.imshow('output', frame_res)
         cv2.waitKey(0)
 
-    # del_b = delete_borders(thresh)
-    # im2 = gray.copy()
-    im2 = thresh.copy()
-
-  # need to run only once to load model into memory
-    result = parse_result(reader.readtext(im2, detail = 0))
-
-    print('default: {}'.format(result))
-
-    result = parse_result(reader.readtext(inversed_im, detail=0))
-    print('inversed: {}'.format(result))
-
-    result = parse_result(reader.readtext(cropped_plate, detail=0))
-    print('with cropped plate: {}'.format(result))
-
-
-
-frame_res = draw_detect(image, bboxes)
-cv2.imshow('d0', frame_res)
-cv2.waitKey(1)
-
-cv2.destroyAllWindows()
+        cv2.destroyAllWindows()

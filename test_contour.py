@@ -106,6 +106,7 @@ def crop_plate(image):
     cnt = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(cnt)
     cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
     img = img[y:y + h, x:x + w]
     return img
 
