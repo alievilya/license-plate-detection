@@ -7,8 +7,14 @@ from os.path import join
 from draw import draw_detect
 import easyocr
 from test_contour import crop_plate
-from plate_image import preprocess_image, parse_result
+from plate_image import preprocess_image, parse_result, deskew
+try:
+    from PIL import Image
+except ImportError:
+    import Image
+import pytesseract
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
 
 show_steps = False
@@ -46,26 +52,28 @@ while rr:
 
     bboxes = model.predict_img(frame, plot_img=False, show_text=False)
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # pred = reader.detect(image)
-    # res = reader.recognize(image, pred[0], pred[1], allowlist=allow_symbols, detail=1)
-    # # res.sort(key=lambda x: x[0][0][0])
-    # # print(res)
-
     for bbox in bboxes.values:
         height_coef = 80 / bbox[7]
         width_coef = 400 / bbox[6]
 
-        crop_img = frame[int(bbox[1] - 10):int(bbox[1]) + int(bbox[7] + 10),
-                   int(bbox[0] - 10):int(bbox[0]) + int(bbox[6] + 10)]
+        crop_img = frame[int(bbox[1] - 7):int(bbox[1]) + int(bbox[7] + 7),
+                   int(bbox[0] - 7):int(bbox[0]) + int(bbox[6] + 7)]
 
-        crop_img = preprocess_image(crop_img, width_coef=width_coef, height_coef=height_coef, show_steps=True)
+        crop_img = preprocess_image(crop_img, width_coef=width_coef, height_coef=height_coef, show_steps=False)
         crop_img = crop_plate(crop_img)
+        crop_img = deskew(crop_img)
+
         pred = reader.detect(crop_img)
         # result = reader.recognize(crop_img, pred[0], pred[1], allowlist=allow_symbols, detail=0)
         # print('detection: {}'.format(result))
 
+        tess_res = pytesseract.image_to_string(crop_img, lang='eng')
+        # print('tess res: {}'.format(tess_res))
+
         result = parse_result(reader.readtext(crop_img, allowlist=allow_symbols, detail=0, adjust_contrast = 0.5))
         print('read text: {}'.format(result))
+        # cv2.imshow('crop_img', crop_img)
+        # cv2.waitKey()
 
     frame_res = draw_detect(frame, bboxes)
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)

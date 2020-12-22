@@ -149,12 +149,27 @@ def parse_result(res):
         for i, sym in enumerate(el):
             if sym in not_allowed_syms:
                 new_el += ''
-            else: new_el += sym
-
-            if i == 0 and sym in B_similar:
+            elif i == 0 and sym in B_similar:
                 new_el += 'B'
 
+            else: new_el += sym
+
+
+
     return new_el
+
+def deskew(image):
+    coords = np.column_stack(np.where(image > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return rotated
 
 
 def preprocess_image(img, width_coef, height_coef, show_steps=False):
@@ -162,13 +177,13 @@ def preprocess_image(img, width_coef, height_coef, show_steps=False):
     # equ = cv2.equalizeHist(crop_img)
     # res = np.hstack((crop_img, equ))  # stacking images side-by-side
 
-    # gray = cv2.resize(img, None, fx=width_coef, fy=height_coef, interpolation=cv2.INTER_AREA)
-    disnoised = cv2.fastNlMeansDenoising(img, None, 5, 5, 7)
+    gray = cv2.resize(img, None, fx=width_coef, fy=height_coef, interpolation=cv2.INTER_AREA)
+    disnoised = cv2.fastNlMeansDenoising(gray, None, 5, 5, 7)
 
-    blur = cv2.GaussianBlur(disnoised, (5, 5), 0)
-    gray = cv2.medianBlur(blur, 3)
+    blur = cv2.GaussianBlur(disnoised, (1, 1), 0)
+    # gray = cv2.medianBlur(blur, 3)
     # se = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    # ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
+    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
 
     # inversed_im = cv2.bitwise_not(thresh)
 
@@ -176,15 +191,13 @@ def preprocess_image(img, width_coef, height_coef, show_steps=False):
         cv2.imshow('input', img)
         cv2.imshow('disnoised', disnoised)
         cv2.imshow('blur', gray)
-
-
-        # cv2.imshow("Otsu", thresh)
+        cv2.imshow("thresh", thresh)
         # cv2.imshow("Result", cropped)
         # cv2.imshow("bitwise_not", inversed_im)
         cv2.waitKey(0)
-    return gray
+    return thresh
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
 
     from models import Yolov4
 
