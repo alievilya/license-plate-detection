@@ -8,7 +8,7 @@ from operator import itemgetter
 from draw import draw_detect
 import easyocr
 import scipy.fftpack # For FFT2
-from test_contour import find_biggest_rect, crop_plate
+from process_contour import find_biggest_rect, crop_plate
 #### imclearborder definition
 
 def imclearborder(imgBW, radius):

@@ -97,7 +97,8 @@ def select_object(img):
     return bbox_list_rois
 
 
-def put_text_pil(img: np.array, txt: str):
+def put_text_pil(img: np.array, txt: str, coords: tuple):
+    x, y = coords
     im = Image.fromarray(img)
 
     font_size = 15
@@ -112,7 +113,7 @@ def put_text_pil(img: np.array, txt: str):
     draw = ImageDraw.Draw(im)
     # теперь можно центрировать текст
 
-    draw.text((int((img.shape[1] - 150)), 0), txt, fill='rgb(255, 255, 255)', font=font)
+    draw.text((x, y), txt, fill='rgb(0, 255, 255)', font=font)
     img = np.asarray(im)
 
     return img
