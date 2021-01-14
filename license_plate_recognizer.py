@@ -3,7 +3,7 @@ from os.path import join
 
 import cv2
 import easyocr
-
+from collections import Counter
 from draw import draw_detect, put_text_pil
 from plate_image import preprocess_image, parse_result, deskew
 from process_contour import crop_plate
@@ -74,10 +74,9 @@ while rr:
 
         result = parse_result(reader.readtext(crop_img, allowlist=allow_symbols, detail=0, adjust_contrast=0.5))
 
-        from collections import Counter
-
         if len(result) >= 6:
             res_arr.append(result)
+
 
         print('read text: {}'.format(result))
         # cv2.imshow('crop_img', crop_img)
